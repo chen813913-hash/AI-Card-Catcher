@@ -127,7 +127,7 @@ AI-Card-Catcher/
 3. 双击 `get-binaries.bat`（下载两个 exe）
 4. 双击 `start.bat`，浏览器自动打开，跟着界面提示走（注册自己的 cpolar、填自己的上游 Key）
 
-若发 GitHub：`git init` 后直接 push（`.gitignore` 已排除敏感与超大文件），两个 exe 建议作为 Release 附件上传。
+若发 GitHub：`git init` 后直接 push（`.gitignore` 已排除敏感与超大文件）。**两个 exe 已作为本仓库 Release 附件上传**，`get-binaries.bat` 会优先从本仓库 Release 拉取（走 gh-proxy 镜像），失败再回落到官方源。
 
 ---
 
