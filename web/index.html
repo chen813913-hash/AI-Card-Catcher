@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI-Card-Catcher</title>
+<style>
+  :root { --ink:#172033; --muted:#718096; --line:#e5eaf1; --soft:#f6f8fb;
+          --blue:#2563eb; --green:#16a34a; --red:#dc2626; --amber:#d97706; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+         background:#eef2f7; color:var(--ink); font-size:14px; }
+  header { background:#111827; color:#fff; padding:0 24px; min-height:58px;
+           display:flex; align-items:center; gap:24px; position:sticky; top:0; z-index:20;
+           box-shadow:0 2px 12px rgba(15,23,42,.18); }
+  header .logo { font-weight:800; font-size:16px; letter-spacing:.4px; white-space:nowrap; }
+  header .logo span { color:#7ee2a8; }
+  nav { display:flex; gap:10px; flex:1; align-items:stretch; }
+  .nav-group { display:flex; align-items:center; gap:3px; padding-right:10px; border-right:1px solid #334155; }
+  .nav-group:last-child { border-right:0; }
+  .nav-label { color:#718096; font-size:10px; writing-mode:vertical-rl; letter-spacing:.5px; }
+  nav a { color:#aeb8c8; text-decoration:none; padding:8px 12px; border-radius:8px;
+          font-size:13px; cursor:pointer; white-space:nowrap; }
+  nav a.active, nav a:hover { background:#263247; color:#fff; }
+  .stat { font-size:12px; color:#b4bfce; display:flex; gap:14px; align-items:center; white-space:nowrap; }
+  .dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px; }
+  .on { background:#4ade80; } .off { background:#fb7185; } .mid { background:#fbbf24; }
+  main { max-width:1320px; margin:0 auto; padding:18px 20px 48px; }
+  .page { display:none; } .page.active { display:block; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px;
+          padding:16px 18px; margin-bottom:14px; box-shadow:0 2px 8px rgba(30,41,59,.035); }
+  .card h2 { font-size:15px; margin-bottom:5px; display:flex; align-items:center; gap:8px; }
+  .card .desc { color:#607086; font-size:12.5px; margin-bottom:12px; line-height:1.55; }
+  .row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:7px 0; }
+  .row label { width:104px; color:#607086; font-size:13px; }
+  input[type=text], input[type=password], input[type=search], select {
+      flex:1; min-width:160px; padding:8px 10px; border:1px solid #d4dce8;
+      border-radius:7px; font-size:13px; font-family:inherit; background:#fff; color:var(--ink); }
+  input:focus,select:focus,textarea:focus { outline:2px solid #bfdbfe; border-color:#60a5fa; }
+  button { padding:7px 12px; border:1px solid #d4dce8; background:#fff;
+           color:#334155; border-radius:7px; cursor:pointer; font-size:12.5px; white-space:nowrap; }
+  button:hover { background:#f1f5f9; }
+  button.pri { background:var(--blue); border-color:var(--blue); color:#fff; }
+  button.pri:hover { background:#1d4ed8; }
+  button.dgr { background:#fff; border-color:#f0a3aa; color:var(--red); }
+  button.dgr:hover { background:#fff1f2; }
+  button.warn { background:#fff7ed; border-color:#fed7aa; color:#c2410c; }
+  button.ok { background:#dcfce7!important; border-color:#86efac!important; color:#15803d!important; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; }
+  .b-on { background:#dcfce7; color:#15803d; } .b-off { background:#fee2e2; color:#b91c1c; }
+  .b-mid { background:#fef3c7; color:#a16207; }
+  .msg { font-size:12.5px; color:#607086; margin-top:6px; min-height:16px; white-space:pre-wrap; }
+  .dashboard { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:10px; }
+  .metric { background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px 14px; cursor:pointer; transition:transform .15s,box-shadow .15s,border-color .15s; }
+  .metric:hover,.content-metric:hover { transform:translateY(-2px); box-shadow:0 5px 16px rgba(30,41,59,.1); border-color:#93c5fd; }
+  .metric .label { color:var(--muted); font-size:12px; }
+  .metric .value { font-size:22px; font-weight:750; margin-top:3px; letter-spacing:-.5px; }
+  .metric .hint { color:var(--muted); font-size:11px; margin-top:2px; }
+  .content-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px; }
+  .content-metric { background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px 14px; position:relative; overflow:hidden; cursor:pointer; transition:transform .15s,box-shadow .15s,border-color .15s; }
+  .content-metric:before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:#60a5fa; }
+  .content-metric.red:before { background:#f87171; } .content-metric.purple:before { background:#a78bfa; } .content-metric.orange:before { background:#fb923c; }
+  .content-metric .cm-title { color:#596579; font-size:12px; }
+  .content-metric .cm-value { font-size:20px; font-weight:750; margin-top:3px; }
+  .content-metric .cm-sub { color:var(--muted); font-size:11px; margin-top:2px; }
+  .toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:10px 12px;
+             background:var(--soft); border:1px solid var(--line); border-radius:9px; margin:10px 0; }
+  .toolbar .grow { flex:1; min-width:180px; }
+  .table-wrap { overflow:auto; max-height:calc(100vh - 280px); border:1px solid var(--line); border-radius:8px; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; background:#fff; min-width:900px; }
+  th,td { text-align:left; padding:9px 9px; border-bottom:1px solid #edf1f5; vertical-align:middle; }
+  th { background:#f8fafc; color:#607086; font-weight:700; position:sticky; top:0; z-index:1; }
+  tr.click { cursor:pointer; } tr.click:hover { background:#f6f9ff; }
+  tr.selected { background:#eff6ff; }
+  .mono { font-family:ui-monospace,Consolas,monospace; font-size:11.5px; }
+  .muted { color:#8794a7; }
+  .format { background:#eef2ff; color:#4f46e5; border-radius:5px; padding:2px 6px; font-size:11px; }
+  .summary { color:#718096; font-size:11px; white-space:nowrap; }
+  .pager { display:flex; justify-content:center; align-items:center; gap:8px; padding-top:12px; }
+  .pager button { padding:5px 10px; }
+  .pager button:disabled { opacity:.45; cursor:not-allowed; }
+  .notice { display:none; padding:9px 12px; border-radius:8px; margin-bottom:12px; font-size:12.5px; }
+  .notice.show { display:block; } .notice.warn { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
+  .notice.info { background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; }
+  #mask { display:none; position:fixed; inset:0; background:rgba(15,23,42,.52); z-index:50; }
+  #modal { display:none; position:fixed; z-index:51; inset:5% 5%; max-width:1200px; margin:auto;
+           background:#fff; border-radius:12px; flex-direction:column; overflow:hidden;
+           box-shadow:0 18px 60px rgba(15,23,42,.3); }
+  .mhead { display:flex; align-items:center; gap:8px; padding:12px 16px;
+           border-bottom:1px solid var(--line); background:#f8fafc; font-weight:700; }
+  .mhead .sp { flex:1; }
+  #mbody { flex:1; overflow:auto; padding:14px 18px; }
+  .sec { border:1px solid var(--line); border-radius:8px; margin-bottom:10px; overflow:hidden; }
+  .sec > .shead { background:#f8fafc; padding:8px 12px; display:flex; align-items:center;
+                  gap:9px; cursor:pointer; font-size:12.5px; font-weight:650; }
+  .sec > .sbody { display:none; padding:11px 13px; white-space:pre-wrap;
+                  word-break:break-word; font-size:12.5px; line-height:1.65;
+                  background:#fff; max-height:340px; overflow:auto; }
+  .sec.open > .sbody { display:block; }
+  .tag { padding:2px 7px; border-radius:5px; font-size:11px; font-weight:700; }
+  .t-jailbreak { background:#fee2e2; color:#b91c1c; } .t-character { background:#e0f2fe; color:#0369a1; }
+  .t-worldbook { background:#f3e8ff; color:#7e22ce; } .t-player { background:#ffedd5; color:#c2410c; }
+  .t-rules { background:#fef3c7; color:#a16207; } .t-nsfw_guide { background:#fee2e2; color:#b91c1c; }
+  .t-greeting,.t-history { background:#eef2f7; color:#596579; } .t-user_input { background:#dcfce7; color:#15803d; }
+  .kv { display:grid; grid-template-columns:125px 1fr auto; gap:8px; align-items:center; margin:6px 0; }
+  .kv code { background:#f8fafc; border:1px solid #dbe3ed; border-radius:7px;
+             padding:7px 10px; font-size:12px; word-break:break-all; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  details.compact { border-top:1px solid var(--line); margin-top:10px; padding-top:9px; }
+  details.compact summary { cursor:pointer; color:#526176; font-size:12.5px; font-weight:650; }
+  .library-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:10px 12px; background:var(--soft); border:1px solid var(--line); border-radius:9px; margin:10px 0 14px; }
+  .library-toolbar input, .library-toolbar select { min-width:150px; flex:1; }
+  .library-toolbar .check { display:flex; align-items:center; gap:5px; color:#607086; font-size:12px; white-space:nowrap; }
+  .library-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:12px; }
+  .resource-card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px; min-height:230px; display:flex; flex-direction:column; gap:9px; box-shadow:0 2px 8px rgba(30,41,59,.035); transition:transform .15s,box-shadow .15s,border-color .15s; }
+  .resource-card:hover { transform:translateY(-2px); box-shadow:0 7px 18px rgba(30,41,59,.10); border-color:#93c5fd; }
+  .resource-head { display:flex; align-items:flex-start; gap:8px; }
+  .resource-title { font-size:15px; font-weight:750; line-height:1.35; word-break:break-word; flex:1; }
+  .resource-preview { color:#607086; font-size:12.5px; line-height:1.55; white-space:pre-wrap; word-break:break-word; background:#f8fafc; border-radius:8px; padding:9px; min-height:80px; max-height:116px; overflow:hidden; }
+  .resource-meta { display:flex; gap:8px; flex-wrap:wrap; color:#8794a7; font-size:11px; }
+  .resource-actions { display:flex; flex-wrap:wrap; gap:5px; margin-top:auto; }
+  .resource-actions button { padding:6px 8px; font-size:11.5px; }
+  .resource-empty { grid-column:1/-1; text-align:center; padding:36px 14px; color:#718096; background:#fff; border:1px dashed #cbd5e1; border-radius:10px; }
+  .edit-json { width:100%; min-height:360px; resize:vertical; font-family:ui-monospace,Consolas,monospace; font-size:12px; line-height:1.5; padding:10px; border:1px solid #d4dce8; border-radius:8px; }
+  .detail-block { border:1px solid var(--line); border-radius:8px; margin:8px 0; overflow:hidden; }
+  .detail-block h3 { font-size:12.5px; padding:8px 10px; background:#f8fafc; }
+  .detail-block pre { margin:0; padding:10px; max-height:260px; overflow:auto; white-space:pre-wrap; word-break:break-word; font:12px/1.6 ui-monospace,Consolas,monospace; }
+  .source-row { display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid #edf1f5; }
+  .source-row:last-child { border-bottom:0; }
+  @media (max-width:900px){ .dashboard{grid-template-columns:repeat(2,1fr);} .content-metrics{grid-template-columns:repeat(2,1fr);} .grid2,.grid3{grid-template-columns:1fr;} header{gap:10px;padding:0 12px;} .stat{gap:7px;} }
+  @media (max-width:650px){ .content-metrics{grid-template-columns:1fr;} .nav-label{display:none;} nav{gap:3px;} .nav-group{padding-right:3px;border-right:0;} }
+  @media (max-width:560px){ .dashboard{grid-template-columns:1fr 1fr;} nav a{padding:7px 8px;} header .logo{font-size:13px;} main{padding:12px 10px;} .kv{grid-template-columns:95px 1fr auto;} }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">AI-<span>Card</span>-Catcher</div>
+  <nav aria-label="主导航">
+    <div class="nav-group"><span class="nav-label">运行控制</span>
+      <a data-p="cfg" class="active">⚙️ 配置</a>
+    </div>
+    <div class="nav-group"><span class="nav-label">数据记录</span>
+      <a data-p="cap">📡 拦截</a>
+    </div>
+    <div class="nav-group"><span class="nav-label">导出工具</span>
+      <a data-p="cards">🗂️ 卡片</a>
+    </div>
+  </nav>
+  <div class="stat">
+    <span id="stNew"><i class="dot off"></i>NewAPI</span>
+    <span id="stCp"><i class="dot off"></i>隧道</span>
+    <span id="stCnt"></span>
+  </div>
+</header>
+<main>
+  <div id="globalNotice" class="notice"></div>
+  <div class="dashboard">
+    <div class="metric" role="button" tabindex="0" title="点击查看全部当前记录" onclick="viewRecords('all')" onkeydown="cardKey(event,'all')"><div class="label">当前记录</div><div class="value" id="mTotal">-</div><div class="hint" id="mTotalHint">加载中</div></div>
+    <div class="metric" role="button" tabindex="0" title="点击查看成功请求" onclick="viewRecords('success')" onkeydown="cardKey(event,'success')"><div class="label">成功请求</div><div class="value" id="mSuccess">-</div><div class="hint" id="mSuccessHint">状态 2xx</div></div>
+    <div class="metric" role="button" tabindex="0" title="点击查看失败请求" onclick="viewRecords('error')" onkeydown="cardKey(event,'error')"><div class="label">失败请求</div><div class="value" id="mError">-</div><div class="hint" id="mErrorHint">待排查</div></div>
+    <div class="metric" role="button" tabindex="0" title="点击打开回收站" onclick="openTrash()" onkeydown="cardKey(event,'trash')"><div class="label">回收站</div><div class="value" id="mTrash">-</div><div class="hint">可恢复记录</div></div>
+  </div>
+  <div class="content-metrics">
+    <div class="content-metric" role="button" tabindex="0" title="点击查看人物卡资源" onclick="viewLibrary('character')" onkeydown="cardKey(event,'character')"><div class="cm-title">👤 人物卡</div><div class="cm-value" id="mCharacter">-</div><div class="cm-sub" id="mCharacterSub">点击查看人物卡资源</div></div>
+    <div class="content-metric red" role="button" tabindex="0" title="点击查看破甲资源" onclick="viewLibrary('jailbreak')" onkeydown="cardKey(event,'jailbreak')"><div class="cm-title">🛡️ 破甲</div><div class="cm-value" id="mJailbreak">-</div><div class="cm-sub" id="mJailbreakSub">点击查看破甲资源</div></div>
+    <div class="content-metric purple" role="button" tabindex="0" title="点击查看世界书资源" onclick="viewLibrary('worldbook')" onkeydown="cardKey(event,'worldbook')"><div class="cm-title">📚 世界书</div><div class="cm-value" id="mWorldbook">-</div><div class="cm-sub" id="mWorldbookSub">点击查看世界书资源</div></div>
+    <div class="content-metric orange" role="button" tabindex="0" title="点击查看用户马甲资源" onclick="viewLibrary('player')" onkeydown="cardKey(event,'player')"><div class="cm-title">👤 用户马甲</div><div class="cm-value" id="mPlayer">-</div><div class="cm-sub" id="mPlayerSub">点击查看用户马甲资源</div></div>
+  </div>
+
+<!-- ================= 配置页 ================= -->
+<div class="page active" id="p-cfg">
+  <div class="row" style="justify-content:flex-end; margin-bottom:10px;">
+    <button class="dgr" onclick="shutdownAll()">🔴 一键全部关闭（NewAPI + 隧道 + 本工具）</button>
+  </div>
+  <div class="card">
+    <h2>🔗 接入信息 <span class="badge b-on" id="accBadge">-</span><button style="margin-left:auto;" onclick="copyAccessAll()">复制全部</button></h2>
+    <div class="desc">把这三样填到 AI 聊天网站（如 VSOUL）的 API 设置里。公网地址变化时会在页面顶部提醒。</div>
+    <div class="kv"><span>API URL</span><code id="accUrl">-</code><button onclick="cpv('accUrl',this)">复制</button></div>
+    <div class="kv"><span>API Key</span><code id="accKey">-</code><button onclick="cpv('accKey',this)">复制</button></div>
+    <div class="kv"><span>模型名</span><code id="accModels">-</code><button onclick="cpv('accModels',this)">复制</button></div>
+    <div class="msg"> Key 是「专用令牌」，无限额度。想换名字/限额度：进 NewAPI 控制台 → 令牌（登录账号密码见下方 New API 卡片）。</div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>🧠 New API <span class="badge" id="bNew">-</span>
+          <button style="margin-left:auto;" onclick="openConsole()">控制台 ↗</button></h2>
+      <div class="desc">本地 API 网关：转发到你配置的任意上游——<b>火山方舟、DeepSeek 官方、GPT 官方、Claude、Gemini、各类中转站都支持</b>。<b>首次使用</b>：点右上「控制台 ↗」完成初始化向导 → 左侧「渠道」添加你的上游（类型选对应服务商，填 API Key 和模型名，保存后点测试）→「令牌」页确认令牌存在（本工具已自动创建一个专用令牌）。</div>
+      <div class="kv"><span>控制台账号</span><code id="admUser">-</code><button onclick="cpv('admUser',this)">复制</button></div>
+      <div class="kv"><span>控制台密码</span><code id="admPass">-</code><button onclick="cpv('admPass',this)">复制</button>
+          <button onclick="tglPass(this)">👁 显示</button></div>
+      <div class="msg" id="msgAdm"></div>
+      <div class="row"><label>端口</label><input type="text" id="newapiPort" style="max-width:110px;"></div>
+      <div class="row"><label></label>
+        <button class="pri" onclick="svc('newapi','start')">启动</button>
+        <button class="dgr" onclick="svc('newapi','stop')">停止</button>
+        <button onclick="testNew()">可用性检测</button>
+        <button onclick="openConsole()">打开控制台</button>
+      </div>
+      <div class="msg" id="msgNew"></div>
+    </div>
+    <div class="card">
+      <h2>🌐 cpolar 隧道 <span class="badge" id="bCp">-</span>
+          <button style="margin-left:auto;" onclick="window.open('https://dashboard.cpolar.com','_blank')">cpolar 后台 ↗</button></h2>
+      <div class="desc">把本地 3001 暴露为公网 https 地址，AI 网站填的就是这个地址。<b>首次使用</b>：到 <a href="https://www.cpolar.com" target="_blank">cpolar.com</a> 注册（免费）→ 打开 <a href="https://dashboard.cpolar.com/auth" target="_blank">后台「验证」页</a> 复制 authtoken 填到下面 → 点「启动隧道」。公网域名会显示在下方，也可在后台「状态」页查看在线隧道。</div>
+      <div class="row"><label>authtoken</label><input type="password" id="cpToken" placeholder="未配置"></div>
+      <div class="row"><label>区域</label>
+        <select id="cpRegion" style="flex:1;max-width:110px;">
+          <option value="cn">cn 中国</option><option value="us">us 美国</option>
+        </select>
+        <label style="width:auto;">保存后需重启隧道</label>
+      </div>
+      <div class="row"><label>公网地址</label><code class="mono" id="cpUrl" style="flex:1;">-</code>
+        <button onclick="cpv('cpUrl',this)">复制</button></div>
+      <div class="row"><label></label>
+        <button class="pri" onclick="svc('cpolar','start')">启动隧道</button>
+        <button class="dgr" onclick="svc('cpolar','stop')">停止隧道</button>
+        <button onclick="testPub()">连通检测</button>
+      </div>
+      <div class="msg" id="msgCp"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>💾 高级</h2>
+    <div class="row">
+      <label>自动启动</label>
+      <label style="width:auto;"><input type="checkbox" id="autoNew"> NewAPI</label>
+      <label style="width:auto;"><input type="checkbox" id="autoCp"> 隧道(已配token时)</label>
+      <label style="width:auto;">访问口令已内置保护 /_logs 与管理接口，公网访问需带 token</label>
+    </div>
+    <div class="row"><label></label><button onclick="saveCfg()">保存配置</button>
+      <span class="muted">改端口/自动启动需重启主控生效</span></div>
+    <details class="compact">
+      <summary>卡片自动分类规则（高级，可折叠）</summary>
+      <div class="msg" style="margin:8px 0;">适配新网站时在这里加特征关键词；strong=强特征优先匹配，weak=兜底，big_user_worldbook=超长 user 消息视为世界书。</div>
+      <textarea id="rulesTxt" spellcheck="false" style="width:100%;height:150px;font-family:ui-monospace,Consolas,monospace;font-size:12px;padding:10px;border:1px solid #d5d9df;border-radius:6px;"></textarea>
+      <div class="row">
+        <button onclick="saveRules()">保存分类规则</button>
+        <button onclick="loadRules()">还原</button>
+        <span class="muted">立即生效，无需重启</span>
+      </div>
+    </details>
+  </div>
+</div>
+
+<!-- ================= 拦截页 ================= -->
+<div class="page" id="p-cap">
+  <div class="card">
+    <h2>📡 拦截到的请求</h2>
+    <div class="desc">AI 网站每次对话都会把 人物卡+世界书+破甲+历史 一起发过来，全部记录在此。点击行看详情。</div>
+    <div class="toolbar">
+      <input class="grow" type="search" id="kw" placeholder="搜索内容 / 模型 / 令牌">
+      <select id="statusFilter" style="max-width:125px;"><option value="">全部状态</option><option value="success">成功 2xx</option><option value="error">失败</option></select>
+      <select id="formatFilter" style="max-width:135px;"><option value="">全部格式</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="gemini">Gemini</option><option value="vsoul">VSOUL</option></select>
+      <button class="pri" onclick="loadRecs(1)">搜索</button>
+      <button onclick="resetRecFilter()">重置</button>
+    </div>
+    <div class="toolbar">
+      <label style="width:auto;"><input type="checkbox" id="selectAll" onchange="toggleAll(this)"> 全选当前页</label>
+      <button class="dgr" onclick="deleteSelected()">删除选中</button>
+      <button class="warn" onclick="openTrash()">回收站</button>
+      <button onclick="backupNow()">备份记录</button>
+      <span class="muted" id="recCnt"></span><span class="muted" id="recPageInfo"></span>
+    </div>
+    <div class="table-wrap"><table><thead><tr>
+      <th style="width:34px;"></th><th>ID</th><th>时间</th><th>模型</th><th>格式</th><th>状态</th><th>请求大小</th><th>分类摘要</th><th>操作</th>
+    </tr></thead><tbody id="recRows"></tbody></table></div>
+    <div class="pager"><button id="prevPage" onclick="changePage(-1)">上一页</button><span id="pageLabel">第 1 页</span><button id="nextPage" onclick="changePage(1)">下一页</button></div>
+    <div id="recEmpty" class="msg"></div>
+  </div>
+</div>
+
+<!-- ================= 卡片库 ================= -->
+<div class="page" id="p-cards">
+  <div class="card">
+    <h2>🗂️ 卡片资源库 <span class="pill" id="libraryCount">加载中</span></h2>
+    <div class="desc">这里展示的是独立资源卡片，不是抓取请求。编辑、删除、克隆和还原只作用于卡片当前版本，原始抓取记录始终保留。</div>
+    <div class="library-toolbar">
+      <input id="libraryKeyword" type="search" placeholder="搜索名称或内容" onkeydown="if(event.key==='Enter') loadLibrary()">
+      <select id="libraryType" onchange="loadLibrary()"><option value="">全部类型</option><option value="character">人物卡</option><option value="jailbreak">破甲</option><option value="worldbook">世界书</option><option value="player">用户马甲</option></select>
+      <select id="librarySort" onchange="loadLibrary()"><option value="updated">最近更新</option><option value="created">最近抓取</option><option value="sources">来源最多</option></select>
+      <label class="check"><input id="libraryTrash" type="checkbox" onchange="loadLibrary()"> 卡片回收站</label>
+      <button class="pri" onclick="loadLibrary()">刷新</button>
+    </div>
+    <div class="row" style="margin-bottom:0;"><span class="muted" id="libraryHint"></span><span style="flex:1"></span><button onclick="showLibraryHelp()">使用说明</button></div>
+  </div>
+  <div id="libraryGrid" class="library-grid"></div>
+</div>
+</main>
+
+<div id="mask" onclick="closeModal()"></div>
+<div id="modal">
+  <div class="mhead"><span id="mTitle">详情</span><span class="sp"></span>
+    <button onclick="copyModal()">复制当前内容</button>
+    <button onclick="closeModal()">关闭</button></div>
+  <div id="mbody"></div>
+</div>
+
+<script>
+/* ---------- token ---------- */
+var TOKEN = new URLSearchParams(location.search).get('token')
+            || localStorage.getItem('cc_token') || '';
+if (TOKEN) localStorage.setItem('cc_token', TOKEN);
+function api(path, opt) {
+  opt = opt || {};
+  opt.headers = Object.assign({'X-CC-Token': TOKEN}, opt.headers||{});
+  if (opt.body && typeof opt.body !== 'string') {
+    opt.body = JSON.stringify(opt.body);
+    opt.headers['Content-Type'] = 'application/json';
+  }
+  return fetch('/cc/api/' + path, opt).then(function(r){
+    if (r.status === 401) { throw new Error('未授权：请用 start.bat 给的带 token 链接打开'); }
+    return r.json();
+  });
+}
+function cpv(id, btn) {
+  var t = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(t).then(function(){
+    var o = btn.textContent; btn.textContent='已复制 ✓'; btn.classList.add('ok');
+    setTimeout(function(){ btn.textContent=o; btn.classList.remove('ok'); },1400);
+  });
+}
+function tglPass(btn){
+  var el = document.getElementById('admPass');
+  var pw = el.dataset.pw || '';
+  if (el.textContent.indexOf('•') >= 0){
+    el.textContent = pw; btn.textContent='🙈 隐藏';
+  } else {
+    el.textContent='••••••••'; btn.textContent='👁 显示';
+  }
+}
+function openConsole(){
+  window.open('http://127.0.0.1:' + (document.getElementById('newapiPort').value || 3000), '_blank');
+}
+var modalStack = [];
+function showModal(title, node){
+  document.getElementById('mTitle').textContent = title;
+  var b = document.getElementById('mbody'); b.innerHTML=''; b.appendChild(node);
+  document.getElementById('mask').style.display='block';
+  document.getElementById('modal').style.display='flex';
+}
+function copyModal(){
+  var b = document.getElementById('mbody');
+  var txt = b.dataset.copy || b.innerText;
+  navigator.clipboard.writeText(txt);
+}
+function closeModal(){
+  document.getElementById('mask').style.display='none';
+  document.getElementById('modal').style.display='none';
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('nav a').forEach(function(a){
+  a.onclick = function(){
+    document.querySelectorAll('nav a').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+    a.classList.add('active');
+    document.getElementById('p-'+a.dataset.p).classList.add('active');
+    if (a.dataset.p==='cap') loadRecs();
+    if (a.dataset.p==='cards') loadLibrary();
+    if (a.dataset.p==='cfg') loadAccess();
+  };
+});
+
+/* ---------- status ---------- */
+var __lastPublicUrl = localStorage.getItem('cc_last_public_url') || '';
+function refreshStatus(){
+  api('status').then(function(s){
+    setBadge('bNew','stNew', s.newapi.running, 'NewAPI');
+    // 管理员账号密码（New API 控制台登录用）——实时刷新 + 自动修复
+    var adm = s.admin || {};
+    document.getElementById('admUser').textContent = adm.username || '-';
+    document.getElementById('admPass').textContent =
+      adm.password ? '••••••••' : '-';
+    document.getElementById('admPass').dataset.pw = adm.password || '';
+    document.getElementById('msgAdm').textContent = adm.message ||
+      (adm.available ? '登录控制台使用此账号密码。若密码失效会自动重置回这里显示的值。' : '');
+    var pub = s.cpolar.public_url;
+    setBadge('bCp','stCp', s.cpolar.running, '隧道');
+    document.getElementById('cpUrl').textContent = pub || '(未启动)';
+    document.getElementById('stCnt').textContent = '记录 '+s.recorder.total_records+' 条';
+    if (pub && __lastPublicUrl && pub !== __lastPublicUrl) showNotice('公网地址已变化：请同步更新聊天网站的 API URL：'+pub+'/v1', 'warn');
+    if (pub) { __lastPublicUrl = pub; localStorage.setItem('cc_last_public_url', pub); }
+    loadStats();
+    document.getElementById('accUrl').textContent =
+      pub ? pub + '/v1' : '(启动隧道后生成)';
+    window.__accKey = s.access.key;
+    document.getElementById('accKey').textContent = s.access.key || '-';
+    document.getElementById('accModels').textContent =
+      (s.access.models||[]).join(',');
+  }).catch(function(e){ document.getElementById('stCnt').textContent = e.message; });
+}
+function showNotice(text, kind){
+  var el = document.getElementById('globalNotice');
+  el.className = 'notice show ' + (kind || 'info'); el.textContent = text;
+}
+function hideNotice(){ document.getElementById('globalNotice').className='notice'; }
+function loadStats(){
+  api('records/stats').then(function(s){
+    document.getElementById('mTotal').textContent=s.total;
+    document.getElementById('mSuccess').textContent=s.success;
+    document.getElementById('mError').textContent=s.error;
+    document.getElementById('mTrash').textContent=s.trash;
+    document.getElementById('mTotalHint').textContent=fmtKB(s.req_bytes)+' 请求数据';
+    document.getElementById('mSuccessHint').textContent=s.total ? Math.round(s.success*100/s.total)+'% 的请求' : '暂无请求';
+    document.getElementById('mErrorHint').textContent=s.error ? '建议筛选排查' : '暂无失败';
+    var c=s.content||{};
+    setContentMetric('mCharacter','mCharacterSub',c.character,'包含人物设定的记录');
+    setContentMetric('mJailbreak','mJailbreakSub',c.jailbreak,'包含破甲内容的记录');
+    setContentMetric('mWorldbook','mWorldbookSub',c.worldbook,'包含世界书的记录');
+    setContentMetric('mPlayer','mPlayerSub',c.player,'包含玩家身份的记录');
+  });
+}
+function setContentMetric(valueId, subId, data, label){
+  data=data||{};
+  document.getElementById(valueId).textContent=(data.records||0)+' 条';
+  document.getElementById(subId).textContent=label+' · '+fmtKB(data.chars||0)+' 内容';
+}
+function copyAccessAll(){
+  var text='API URL: '+document.getElementById('accUrl').textContent+'\nAPI Key: '+document.getElementById('accKey').textContent+'\n模型: '+document.getElementById('accModels').textContent;
+  navigator.clipboard.writeText(text).then(function(){ showNotice('接入信息已复制，可直接粘贴到聊天网站。','info'); });
+}
+function setBadge(bid, sid, on, name){
+  var b = document.getElementById(bid);
+  b.textContent = on ? '运行中' : '已停止';
+  b.className = 'badge ' + (on ? 'b-on' : 'b-off');
+  document.getElementById(sid).innerHTML =
+    '<i class="dot '+(on?'on':'off')+'"></i>' + name;
+}
+function svc(name, op){
+  api('service/'+name+'/'+op, {method:'POST'}).then(function(r){
+    refreshStatus(); setTimeout(refreshStatus, 2500);
+  });
+}
+function testNew(){
+  document.getElementById('msgNew').textContent = '检测中...';
+  api('test/newapi',{method:'POST'}).then(function(r){
+    document.getElementById('msgNew').textContent = r.message;
+    refreshStatus();
+  });
+}
+function testPub(){
+  document.getElementById('msgCp').textContent = '检测中...';
+  api('test/public',{method:'POST'}).then(function(r){
+    document.getElementById('msgCp').textContent = r.message;
+  });
+}
+function loadAccess(){
+  refreshStatus();
+  api('config').then(function(d){
+    var c = d.config || {};
+    document.getElementById('autoNew').checked = !!c.auto_start_newapi;
+    document.getElementById('autoCp').checked = !!c.auto_start_cpolar;
+    document.getElementById('cpRegion').value = (c.cpolar&&c.cpolar.region) || 'cn';
+    document.getElementById('rulesTxt').value =
+      JSON.stringify(c.classify_rules || {}, null, 2);
+  });
+}
+function loadRules(){
+  api('config').then(function(d){
+    document.getElementById('rulesTxt').value = JSON.stringify((d.config||{}).classify_rules||{}, null, 2);
+    showNotice('分类规则已从当前配置还原','info');
+  });
+}
+function saveRules(){
+  var v;
+  try { v = JSON.parse(document.getElementById('rulesTxt').value); }
+  catch(e){ alert('JSON 格式错误：' + e.message); return; }
+  api('config',{method:'POST',body:{classify_rules:v}}).then(function(){
+    var b = document.querySelector('#p-cfg .card:nth-of-type(3) button');
+    alert('分类规则已保存，立即生效。下次拦截的请求将按新规则分类。');
+  });
+}
+function saveCfg(){
+  api('config',{method:'POST',body:{
+    cpolar_authtoken: document.getElementById('cpToken').value,
+    cpolar_region: document.getElementById('cpRegion').value,
+    auto_start_newapi: document.getElementById('autoNew').checked,
+    auto_start_cpolar: document.getElementById('autoCp').checked
+  }}).then(function(){
+    document.getElementById('msgCp').textContent = '配置已保存。若改了 token/区域，请重启隧道。';
+    refreshStatus();
+  });
+}
+
+function shutdownAll(){
+  if (!confirm('确定关闭全部服务？\n（New API + 公网隧道 + 本工具都会停止，\n重新使用需再次双击 start.bat）')) return;
+  api('shutdown',{method:'POST'}).then(function(){
+    document.body.innerHTML =
+      '<div style="max-width:520px;margin:80px auto;text-align:center;font-family:inherit;">'+
+      '<h2 style="margin-bottom:12px;">🔴 全部服务已关闭</h2>'+
+      '<div class="muted">New API、公网隧道、本工具均已停止。</div>'+
+      '<div class="muted" style="margin-top:8px;">重新使用：双击 AI-Card-Catcher 文件夹里的 start.bat</div></div>';
+    document.title = '[已关闭] AI-Card-Catcher';
+  }).catch(function(){ location.reload(); });
+}
+
+/* ---------- records ---------- */
+var __recs = [], __recPage = 1, __recPages = 1, __selectedIds = {}, __contentFilter = '';
+function loadRecs(page){
+  __recPage = Math.max(1, page || __recPage || 1);
+  var kw = document.getElementById('kw').value;
+  var status = document.getElementById('statusFilter').value;
+  var format = document.getElementById('formatFilter').value;
+  var q = 'records?page='+__recPage+'&page_size=50&keyword='+encodeURIComponent(kw)+
+    '&status='+encodeURIComponent(status)+'&format='+encodeURIComponent(format)+
+    '&content='+encodeURIComponent(__contentFilter);
+  api(q).then(function(d){
+    __recs = d.items || [];
+    __recPages = (d.stats && d.stats.pages) || 1;
+    document.getElementById('recCnt').textContent = '当前结果 '+d.total+' 条';
+    document.getElementById('recPageInfo').textContent = '本页 '+__recs.length+' 条';
+    document.getElementById('pageLabel').textContent = '第 '+__recPage+' / '+__recPages+' 页';
+    document.getElementById('prevPage').disabled = __recPage <= 1;
+    document.getElementById('nextPage').disabled = __recPage >= __recPages;
+    document.getElementById('selectAll').checked = false;
+    var tb = document.getElementById('recRows');
+    document.getElementById('recEmpty').textContent =
+      __recs.length ? '' : '暂无匹配记录——去 AI 网站聊一句就有了';
+    tb.innerHTML = __recs.map(function(it){
+      var cls = it.status>=200&&it.status<300 ? 'b-on' : (it.status===0?'b-mid':'b-off');
+      var summary = Object.keys(it.summary||{}).map(function(k){
+        return (TYPE_LABELS[k]||k)+' '+fmtKB(it.summary[k]);
+      }).join(' · ');
+      return '<tr class="click" onclick="openRec('+it.id+')">'+
+        '<td><input type="checkbox" class="recCheck" value="'+it.id+'" onclick="event.stopPropagation()"></td>'+
+        '<td class="mono muted">'+it.id+'</td>'+
+        '<td class="mono">'+(it.ts||'').slice(11,19)+'</td>'+
+        '<td class="mono">'+esc(it.model||'-')+'</td>'+
+        '<td><span class="format">'+esc(it.format||'unknown')+'</span></td>'+
+        '<td><span class="badge '+cls+'">'+it.status+'</span></td>'+
+        '<td class="mono">'+fmtKB(it.req_size)+'</td>'+
+        '<td class="summary" title="'+esc(summary)+'">'+esc(summary||'-')+'</td>'+
+        '<td><button class="dgr" onclick="event.stopPropagation();deleteOne('+it.id+')">删除</button></td></tr>';
+    }).join('');
+  }).catch(function(e){ showNotice('记录加载失败：'+e.message,'warn'); });
+}
+var TYPE_LABELS = {jailbreak:'破甲',character:'角色',worldbook:'世界书',player:'玩家',rules:'规则',nsfw_guide:'描写',history:'历史',user_input:'输入'};
+function fmtKB(n){ return n>1024*1024 ? (n/1048576).toFixed(1)+'MB'
+  : n>1024 ? (n/1024).toFixed(1)+'KB' : (n||0)+'B'; }
+function resetRecFilter(){
+  document.getElementById('kw').value=''; document.getElementById('statusFilter').value='';
+  document.getElementById('formatFilter').value=''; __contentFilter=''; loadRecs(1);
+}
+function cardKey(e, kind){
+  if (e.key==='Enter' || e.key===' ') { e.preventDefault(); if(kind==='trash') openTrash(); else viewRecords(kind); }
+}
+function viewLibrary(kind){
+  document.querySelectorAll('nav a').forEach(function(x){x.classList.remove('active');});
+  document.querySelector('nav a[data-p="cards"]').classList.add('active');
+  document.querySelectorAll('.page').forEach(function(x){x.classList.remove('active');});
+  document.getElementById('p-cards').classList.add('active');
+  document.getElementById('libraryType').value=kind||'';
+  document.getElementById('libraryTrash').checked=false;
+  loadLibrary();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function viewRecords(kind){
+  document.querySelectorAll('nav a').forEach(function(x){x.classList.remove('active');});
+  document.querySelector('nav a[data-p="cap"]').classList.add('active');
+  document.querySelectorAll('.page').forEach(function(x){x.classList.remove('active');});
+  document.getElementById('p-cap').classList.add('active');
+  document.getElementById('statusFilter').value = kind==='success'||kind==='error' ? kind : '';
+  document.getElementById('formatFilter').value = '';
+  __contentFilter = ['character','jailbreak','worldbook','player'].indexOf(kind)>=0 ? kind : '';
+  document.getElementById('kw').value = '';
+  loadRecs(1);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function changePage(step){
+  var next = __recPage + step;
+  if (next >= 1 && next <= __recPages) loadRecs(next);
+}
+function toggleAll(box){
+  document.querySelectorAll('.recCheck').forEach(function(x){ x.checked=box.checked; });
+}
+function selectedIds(){
+  return Array.prototype.slice.call(document.querySelectorAll('.recCheck:checked')).map(function(x){return Number(x.value);});
+}
+function deleteOne(id){
+  if (!confirm('确定把记录 #'+id+' 移入回收站？\n原始内容不会立即抹除，可在回收站恢复。')) return;
+  api('records/'+id,{method:'DELETE'}).then(function(r){
+    if (!r.ok) { showNotice(r.message||'删除失败','warn'); return; }
+    showNotice('记录 #'+id+' 已移入回收站','info'); loadStats(); loadRecs(__recPage);
+  });
+}
+function deleteSelected(){
+  var ids=selectedIds();
+  if (!ids.length) { showNotice('请先勾选要删除的记录','warn'); return; }
+  if (!confirm('确定把选中的 '+ids.length+' 条记录移入回收站？\n可在回收站恢复。')) return;
+  api('records/batch',{method:'POST',body:{op:'delete',ids:ids}}).then(function(r){
+    if (!r.ok) { showNotice(r.message||'删除失败','warn'); return; }
+    showNotice('已移入回收站：'+ids.length+' 条','info'); loadStats(); loadRecs(__recPage);
+  });
+}
+function backupNow(){
+  api('backup',{method:'POST'}).then(function(r){ showNotice(r.ok?'记录备份已创建：'+r.path:'备份失败：'+r.message,r.ok?'info':'warn'); });
+}
+function deleteCard(id){
+  if (!confirm('确定把当前记录 #'+id+' 移入回收站？')) return;
+  api('records/'+id,{method:'DELETE'}).then(function(r){
+    if (!r.ok) { showNotice(r.message||'删除失败','warn'); return; }
+    showNotice('记录已移入回收站','info'); loadStats(); fillSel();
+    document.getElementById('cardBody').innerHTML='<div class="card"><div class="msg">记录已删除，可在拦截页回收站恢复。</div></div>';
+  });
+}
+function openTrash(){
+  api('trash').then(function(d){
+    var node=document.createElement('div');
+    node.innerHTML='<div class="msg">回收站中的记录不会出现在列表和卡片页。可恢复，或彻底删除（每批最多50条）。</div>'+
+      '<div id="trashList" style="margin-top:12px;"></div>';
+    var list=node.querySelector('#trashList');
+    if (!d.items.length) list.innerHTML='<div class="msg">回收站为空</div>';
+    d.items.forEach(function(it){
+      var row=document.createElement('div'); row.className='toolbar';
+      row.innerHTML='<span class="mono">#'+it.id+'</span><span>'+esc(it.model||'-')+'</span>'+
+        '<span class="muted">'+esc(it.deleted_at||'')+'</span><span class="grow"></span>'+
+        '<button onclick="trashAction('+it.id+',\'restore\')">恢复</button>'+
+        '<button class="dgr" onclick="trashAction('+it.id+',\'purge\')">彻底删除</button>';
+      list.appendChild(row);
+    });
+    showModal('回收站（'+d.items.length+' 条）',node);
+  });
+}
+function trashAction(id,op){
+  var text=op==='restore'?'恢复记录 #'+id+'？':'彻底删除记录 #'+id+'？\n此操作不可恢复。';
+  if (!confirm(text)) return;
+  api('records/batch',{method:'POST',body:{op:op,ids:[id]}}).then(function(r){
+    if (!r.ok) { showNotice(r.message||'操作失败','warn'); return; }
+    closeModal(); loadStats(); loadRecs(__recPage); openTrash();
+  });
+}
+function openRec(id){
+  api('records/'+id).then(function(d){
+    var wrap = document.createElement('div');
+    var head = document.createElement('div');
+    head.innerHTML = '<div class="msg">ID '+d.id+' | '+d.ts+' | 模型 '+esc(d.model)+
+      ' | 状态 '+d.status+' | '+d.elapsed_ms+'ms | 参数 '+esc(JSON.stringify(d.params||{}))+
+      (d.error? ' | ⚠ '+esc(d.error):'')+'</div>';
+    wrap.appendChild(head);
+    (d.messages||[]).forEach(function(m){
+      var sec = document.createElement('div'); sec.className='sec';
+      sec.innerHTML = '<div class="shead" onclick="this.parentNode.classList.toggle(\'open\')">'+
+        '<span class="tag t-'+esc(m.role)+'">'+esc(m.role)+'</span>'+
+        '<span>#'+m.index+'</span><span class="muted">'+m.length+' 字符</span>'+
+        '<span class="sp" style="flex:1"></span><span class="muted">点击展开</span></div>'+
+        '<div class="sbody">'+esc(m.content)+'</div>';
+      sec.dataset.copy = m.content;
+      sec.querySelector('.shead').addEventListener('click', function(){ window.__copyText = m.content; });
+      wrap.appendChild(sec);
+    });
+    if (d.resp_text){
+      var sec = document.createElement('div'); sec.className='sec open';
+      sec.innerHTML = '<div class="shead"><span class="tag t-user_input">AI 回复</span>'+
+        '<span class="muted">'+d.resp_text.length+' 字符</span></div>'+
+        '<div class="sbody">'+esc(d.resp_text)+'</div>';
+      wrap.appendChild(sec);
+    }
+    wrap.dataset.copy = (d.messages||[]).map(function(m){return m.content;}).join('\n\n---\n\n');
+    showModal('请求详情 #'+d.id, wrap);
+  });
+}
+window.__copyText = '';
+
+/* ---------- resource card library ---------- */
+var __libraryItems = [];
+var LIBRARY_TYPE_LABELS = {character:'人物卡',jailbreak:'破甲',worldbook:'世界书',player:'用户马甲'};
+function resourcePreview(item){
+  var c=item.content||{};
+  if (item.type==='character') return c.description || c.setting || '';
+  if (item.type==='jailbreak') return [c.systemPrompt,c.rulePrompt,c.postPrompt].filter(Boolean).join('\n\n');
+  if (item.type==='worldbook') return (c.entries||[]).map(function(x){return x.content||'';}).join('\n\n');
+  return c.persona_text || c.content || c.notes || '';
+}
+function resourceName(item){ return item.name || LIBRARY_TYPE_LABELS[item.type] || '未命名资源'; }
+function loadLibrary(){
+  var qs='library?keyword='+encodeURIComponent(document.getElementById('libraryKeyword').value||'')+
+    '&type='+encodeURIComponent(document.getElementById('libraryType').value||'')+
+    '&sort='+encodeURIComponent(document.getElementById('librarySort').value||'')+
+    '&trash='+(document.getElementById('libraryTrash').checked?'1':'0');
+  api(qs).then(function(d){
+    __libraryItems=d.items||[];
+    document.getElementById('libraryCount').textContent=d.total+' 项';
+    document.getElementById('libraryHint').textContent=(d.trash?'卡片回收站':'当前资源')+' · 原始抓取记录不会被卡片操作修改';
+    renderLibrary();
+  }).catch(function(e){showNotice('卡片库加载失败：'+e.message,'warn');});
+}
+function renderLibrary(){
+  var grid=document.getElementById('libraryGrid');
+  if (!__libraryItems.length){grid.innerHTML='<div class="resource-empty">'+(document.getElementById('libraryTrash').checked?'卡片回收站为空':'还没有提取到资源卡片。先让聊天网站经过代理发送一条请求。')+'</div>';return;}
+  grid.innerHTML=__libraryItems.map(function(item){
+    var preview=resourcePreview(item).replace(/\s+/g,' ').trim();
+    var deleted=item.deletedAt;
+    return '<article class="resource-card"><div class="resource-head"><span class="tag t-'+item.type+'">'+esc(item.typeLabel||LIBRARY_TYPE_LABELS[item.type])+'</span><div class="resource-title">'+esc(resourceName(item))+'</div></div>'+
+      '<div class="resource-preview">'+esc(preview.slice(0,420)||'暂无可预览内容')+'</div>'+
+      '<div class="resource-meta"><span>来源 '+item.sourceCount+' 条</span><span>更新 '+esc((item.updatedAt||'').slice(0,16))+'</span>'+(item.versionKind==='edited'?'<span class="badge b-mid">已编辑</span>':'')+(deleted?'<span class="badge b-off">已删除</span>':'')+'</div>'+
+      '<div class="resource-actions"><button class="pri" onclick="openLibraryDetail(\''+item.type+'\','+item.id+')">查看详情</button>'+ 
+      (deleted?'<button onclick="undeleteLibrary(\''+item.type+'\','+item.id+')">还原卡片</button>':'<button onclick="editLibrary(\''+item.type+'\','+item.id+')">编辑</button><button onclick="cloneLibrary(\''+item.type+'\','+item.id+')">克隆</button><button onclick="restoreLibrary(\''+item.type+'\','+item.id+')">还原原始</button><button class="dgr" onclick="deleteLibrary(\''+item.type+'\','+item.id+')">删除</button>')+
+      '<button onclick="exportLibrary(\''+item.type+'\','+item.id+')">导出 JSON</button><button onclick="pushLibrary(\''+item.type+'\','+item.id+')">导入聊天网站</button><button onclick="showSources(\''+item.type+'\','+item.id+')">抓取数据</button></div></article>';
+  }).join('');
+}
+function openLibraryDetail(type,id){
+  api('library/'+type+'/'+id).then(function(item){
+    var node=document.createElement('div');
+    var preview=resourcePreview(item);
+    node.innerHTML='<div class="msg">类型：'+esc(item.typeLabel)+' · 当前版本：'+esc(item.versionKind)+' · 来源 '+item.sourceCount+' 条 · 最近原始来源 #'+(item.latestSourceId||'-')+'</div>'+
+      '<div class="row"><button class="pri" onclick="editLibrary(\''+type+'\','+id+')">编辑当前版本</button><button onclick="exportLibrary(\''+type+'\','+id+')">导出当前 JSON</button><button onclick="pushLibrary(\''+type+'\','+id+')">导入 ai-character-chat</button><button onclick="showSources(\''+type+'\','+id+')">跳转到抓取数据</button></div>'+
+      '<div class="detail-block"><h3>当前内容</h3><pre>'+esc(preview||JSON.stringify(item.content,null,2))+'</pre></div>'+
+      '<div class="detail-block"><h3>版本信息</h3><pre>'+esc((item.versions||[]).map(function(v){return '#'+v.id+' '+v.kind+' '+(v.createdAt||'')+(v.sourceId?' 来源 #'+v.sourceId:'');}).join('\n')||'暂无版本')+'</pre></div>';
+    showModal(resourceName(item),node);
+  });
+}
+function editLibrary(type,id){
+  api('library/'+type+'/'+id).then(function(item){
+    var node=document.createElement('div');
+    node.innerHTML='<div class="msg">只保存为新的当前版本，不会修改原始抓取记录。点击取消不会改变任何数据。</div><input id="editName" type="text" style="width:100%;margin:10px 0;"><textarea id="editJson" class="edit-json"></textarea><div class="row"><span style="flex:1"></span><button onclick="closeModal()">取消</button><button class="pri" onclick="saveLibraryEdit(\''+type+'\','+id+')">保存当前版本</button></div>';
+    node.querySelector('#editName').value=item.name;
+    node.querySelector('#editJson').value=JSON.stringify(item.content,null,2);
+    showModal('编辑'+item.typeLabel+'：'+item.name,node);
+  });
+}
+function saveLibraryEdit(type,id){
+  var raw=document.getElementById('editJson').value, content;
+  try{content=JSON.parse(raw);}catch(e){showNotice('JSON 格式错误：'+e.message,'warn');return;}
+  api('library/'+type+'/'+id,{method:'PUT',body:{name:document.getElementById('editName').value,content:content}}).then(function(r){if(!r.ok){showNotice(r.error||'保存失败','warn');return;}closeModal();loadLibrary();showNotice('当前版本已保存，原始抓取仍保留','info');});
+}
+function deleteLibrary(type,id){if(!confirm('确定将这张卡片移入回收站？\n原始抓取和历史版本不会删除。'))return;api('library/'+type+'/'+id,{method:'DELETE'}).then(function(r){if(!r.ok){showNotice(r.error||'删除失败','warn');return;}loadLibrary();showNotice('卡片已软删除，可在卡片回收站还原','info');});}
+function undeleteLibrary(type,id){api('library/'+type+'/'+id+'/undelete',{method:'POST'}).then(function(r){if(!r.ok){showNotice(r.message||'还原失败','warn');return;}loadLibrary();});}
+function cloneLibrary(type,id){var name=prompt('副本名称（留空使用默认名称）','');if(name===null)return;api('library/'+type+'/'+id+'/clone',{method:'POST',body:{name:name}}).then(function(r){if(!r.ok){showNotice(r.error||'克隆失败','warn');return;}loadLibrary();showNotice('已创建独立副本','info');});}
+function restoreLibrary(type,id){if(!confirm('确定还原到最近一次原始抓取版本？\n当前编辑内容会保留在历史版本中。'))return;api('library/'+type+'/'+id+'/restore',{method:'POST'}).then(function(r){if(!r.ok){showNotice(r.error||'还原失败','warn');return;}loadLibrary();showNotice('已还原到最近一次原始抓取版本','info');});}
+function exportLibrary(type,id){location.href='/cc/api/library/'+type+'/'+id+'/export?token='+encodeURIComponent(TOKEN);}
+function pushLibrary(type,id){api('library/'+type+'/'+id+'/link').then(function(packet){var target=prompt('聊天网站地址',localStorage.getItem('cc_link_target')||'http://127.0.0.1:5173');if(!target)return;target=target.trim().replace(/\/$/,'');localStorage.setItem('cc_link_target',target);return api('link/push',{method:'POST',body:{chat_url:target,packet:packet}});}).then(function(r){if(!r)return;showNotice(r.ok?'联动数据已送达，请在聊天网站确认':(r.message||'发送失败'),r.ok?'info':'warn');}).catch(function(e){showNotice('联动失败：'+e.message,'warn');});}
+function showSources(type,id){api('library/'+type+'/'+id+'/sources').then(function(d){var node=document.createElement('div');node.innerHTML='<div class="msg">这里只显示这张卡片关联的来源记录；点击记录可查看原始请求。卡片编辑/删除不会改变这些记录。</div><div id="sourceList"></div>';var list=node.querySelector('#sourceList');(d.items||[]).forEach(function(x){var row=document.createElement('div');row.className='source-row';row.innerHTML='<span class="mono">#'+x.id+'</span><span>'+esc(x.ts||'')+'</span><span class="muted">'+esc(x.model||'-')+'</span><span class="grow"></span><button onclick="closeModal();openRec('+x.id+')">查看原始请求</button>';list.appendChild(row);});if(!d.items||!d.items.length)list.innerHTML='<div class="msg">暂无来源记录</div>';showModal('这张卡片的抓取数据',node);});}
+function showLibraryHelp(){var node=document.createElement('div');node.innerHTML='<div class="detail-block"><h3>卡片库规则</h3><pre>• 一张卡片 = 一个资源当前版本，不再按请求显示。\n• 新抓取同名资源会保存新的原始版本，不覆盖当前编辑版本。\n• 编辑会新增当前版本；删除是软删除；还原回最近一次原始抓取版本。\n• 抓取数据按钮只展示这张卡片关联的请求来源。\n• 导出和联动导入均使用当前版本。</pre></div>';showModal('卡片库使用说明',node);}
+
+/* ---------- boot ---------- */
+refreshStatus();
+loadAccess();
+loadRecs(1);
+setInterval(refreshStatus, 8000);
+</script>
+</body>
+</html>

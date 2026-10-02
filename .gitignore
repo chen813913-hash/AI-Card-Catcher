@@ -1,0 +1,19 @@
+# binaries (downloaded via get-binaries.bat, or attach to GitHub Releases)
+bin/
+*.exe
+*.zip
+
+# runtime data
+data/
+one-api.db
+one-api.db-shm
+one-api.db-wal
+*.log
+
+# python
+__pycache__/
+*.pyc
+
+# 本地备份目录（历史版本快照，不上库）
+_backup_*/
+nul
