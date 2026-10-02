@@ -3,8 +3,9 @@ cd /d "%~dp0"
 title AI-Card-Catcher
 
 REM ---- locate python: py launcher -> python -> python3 ----
+REM 注意：PY 必须是单个词（不含空格参数），否则 "%PY%" 展开会把 "py -3" 当成程序名
 set PY=
-py -3 --version >nul 2>&1 && set PY=py -3
+py --version >nul 2>&1 && set PY=py
 if not defined PY (
     python --version >nul 2>&1 && set PY=python
 )
